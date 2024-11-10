@@ -1,14 +1,22 @@
 package main
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/gob"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 )
+
+type Person struct {
+	Name string
+	Age  int
+}
 
 func encrypt(keyString string, stringToEncrypt string) (encryptedString string) {
 	key, _ := hex.DecodeString(keyString)
@@ -54,21 +62,55 @@ func decrypt(keyString string, stringToDecrypt string) string {
 }
 
 func main() {
-	originalText := "Hello GolinuxCloud members!"
-	fmt.Println(originalText)
+	var network bytes.Buffer
+	enc := gob.NewEncoder(&network)
+
+	err := enc.Encode(Person{"Harry Potter", 1000})
+	if err != nil {
+		log.Fatal("encode error:", err)
+	}
 
 	key := []byte("this's secret key.enough 32 bits")
 	if _, err := rand.Read(key); err != nil {
-		panic(err.Error())
+		log.Fatal(err.Error())
 	}
-
 	keyStr := hex.EncodeToString(key)
 
-	fmt.Println("Encrypting...")
-	cryptoText := encrypt(keyStr, originalText)
+	fmt.Println("Encrypting....")
+	cryptoText := encrypt(keyStr, string(network.Bytes()))
 	fmt.Println(cryptoText)
+	if err != nil {
+		log.Fatal("write file err: %v", err.Error())
+	}
 
-	fmt.Println("Decrypting....")
+	fmt.Println("Decrypting.....")
 	text := decrypt(keyStr, cryptoText)
-	fmt.Println(text)
+	byteBuffer := bytes.NewBuffer([]byte(text))
+	dec := gob.NewDecoder(byteBuffer)
+	var person Person
+	err = dec.Decode(&person)
+	if err != nil {
+		log.Fatal("decode error :", err)
+	}
+	fmt.Printf("%q: %d\n", person.Name, person.Age)
 }
+
+// func main() {
+// 	originalText := "Hello GolinuxCloud members!"
+// 	fmt.Println(originalText)
+
+// 	key := []byte("this's secret key.enough 32 bits")
+// 	if _, err := rand.Read(key); err != nil {
+// 		panic(err.Error())
+// 	}
+
+// 	keyStr := hex.EncodeToString(key)
+
+// 	fmt.Println("Encrypting...")
+// 	cryptoText := encrypt(keyStr, originalText)
+// 	fmt.Println(cryptoText)
+
+// 	fmt.Println("Decrypting....")
+// 	text := decrypt(keyStr, cryptoText)
+// 	fmt.Println(text)
+// }
